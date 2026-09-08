@@ -13,3 +13,20 @@ datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
+
+
+enum Role {
+  GAMER
+  CAFE_OWNER
+  ADMIN
+}
+
+model User {
+  id           String   @id @default(uuid())
+  phone        String?  @unique
+  email        String?  @unique
+  password     String?  // nullable if using OTP-only for gamers
+  role         Role
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
