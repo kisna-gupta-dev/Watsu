@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: watsu-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kisna
+      POSTGRES_PASSWORD: Kisna@Watsu
+      POSTGRES_DB: watsu
+    ports:
+      - '5432:5432'
+    volumes:
+      - watsu_pgdata:/var/lib/postgresql/data
+
+volumes:
+  watsu_pgdata:

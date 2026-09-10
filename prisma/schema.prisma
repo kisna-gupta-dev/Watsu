@@ -10,10 +10,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
 
 enum Role {
   GAMER
@@ -21,13 +20,305 @@ enum Role {
   ADMIN
 }
 
+enum PlatformType {
+  PC
+  PLAYSTATION
+  XBOX
+}
+
+enum TournamentMode {
+  ON_SITE
+  REMOTE
+}
+
+enum TournamentScope {
+  CAFE_INTERNAL
+  CAFE_VS_CAFE
+  CITY_VS_CITY
+}
+
+enum TournamentStatus {
+  DRAFT
+  REGISTRATION_OPEN
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum BracketFormat {
+  SINGLE_ELIMINATION
+  ROUND_ROBIN
+  POINTS_LEAGUE
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum LeaderboardScope {
+  CAFE
+  CITY
+  STATE
+  GLOBAL
+}
+
 model User {
   id           String   @id @default(uuid())
-  phone        String?  @unique
-  email        String  @unique
-  password     String  
+  email        String   @unique
+  password     String
   role         Role
-  refreshToken String?  // hashed refresh token stored here
+  refreshToken String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  gamerProfile     GamerProfile?
+  cafeOwnerProfile CafeOwnerProfile?
+}
+
+model GamerProfile {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  displayName String
+  avatarUrl   String?
+  city        String?
+  homeCafeId  String?
+  homeCafe    Cafe?   @relation("HomeCafeGamers", fields: [homeCafeId], references: [id])
+
+  inGameIds      GamerInGameId[]
+  participations TournamentParticipant[]
+  titlesHeld     Title[]
+  payments       Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model GamerInGameId {
+  id       String       @id @default(uuid())
+  gamerId  String
+  gamer    GamerProfile @relation(fields: [gamerId], references: [id])
+  gameId   String
+  game     Game         @relation(fields: [gameId], references: [id])
+  inGameId String
+
+  @@unique([gamerId, gameId]) // one ID per game per gamer
+}
+
+model CafeOwnerProfile {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  businessName String
+  phone        String?
+
+  cafes Cafe[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Game {
+  id                 String         @id @default(uuid())
+  name               String         @unique
+  iconUrl            String?
+  supportedPlatforms PlatformType[]
+  defaultTeamSize    Int            @default(1)
+  isActive           Boolean        @default(true)
+
+  tagline       String? // e.g. per-game cult tagline, custom name TBD
+  rulesTemplate String?
+
+  stations    Station[]
+  tournaments Tournament[]
+  gamerIds    GamerInGameId[]
+  titles      Title[]
+
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  leaderboards Leaderboard[]
+}
+
+model Cafe {
+  id      String           @id @default(uuid())
+  ownerId String
+  owner   CafeOwnerProfile @relation(fields: [ownerId], references: [id])
+
+  name       String
+  address    String
+  city       String
+  isVerified Boolean @default(false)
+
+  stations          Station[]
+  hostedTournaments Tournament[]   @relation("HostingCafe")
+  homeGamers        GamerProfile[] @relation("HomeCafeGamers")
+  titlesHeld        Title[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Station {
+  id     String @id @default(uuid())
+  cafeId String
+  cafe   Cafe   @relation(fields: [cafeId], references: [id])
+
+  platform PlatformType
+  label    String? // e.g. "PC-04", "PS5-02" — optional friendly identifier
+  gameId   String?
+  game     Game?        @relation(fields: [gameId], references: [id])
+  isActive Boolean      @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Tournament {
+  id String @id @default(uuid())
+
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id])
+
+  hostCafeId String
+  hostCafe   Cafe   @relation("HostingCafe", fields: [hostCafeId], references: [id])
+
+  title       String
+  description String?
+
+  mode          TournamentMode
+  scope         TournamentScope
+  bracketFormat BracketFormat
+
+  entryFee        Decimal @default(0) // 0 = free
+  maxParticipants Int?
+
+  status TournamentStatus @default(DRAFT)
+
+  startAt DateTime?
+  endAt   DateTime?
+
+  participants TournamentParticipant[]
+  matches      Match[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TournamentParticipant {
+  id String @id @default(uuid())
+
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+
+  gamerId String
+  gamer   GamerProfile @relation(fields: [gamerId], references: [id])
+
+  teamName     String? // for squad tournaments, optional grouping label
+  registeredAt DateTime @default(now())
+
+  payment Payment?
+
+  @@unique([tournamentId, gamerId]) // a gamer can only register once per tournament
+}
+
+model Match {
+  id String @id @default(uuid())
+
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+
+  round       Int
+  scheduledAt DateTime?
+
+  result Result?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Result {
+  id String @id @default(uuid())
+
+  matchId String @unique
+  match   Match  @relation(fields: [matchId], references: [id])
+
+  winnerId  String? // gamerId of winner, nullable for draws/pending
+  scoreJson Json? // flexible per-game score data (kills, placement, etc.)
+
+  recordedAt DateTime @default(now())
+}
+
+model Leaderboard {
+  id String @id @default(uuid())
+
+  scope      LeaderboardScope
+  scopeRefId String // cafeId, city name, or "global" depending on scope
+  gameId     String
+  game       Game             @relation(fields: [gameId], references: [id])
+
+  gamerId String
+  points  Int    @default(0)
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([scope, scopeRefId, gameId, gamerId])
+}
+
+model Title {
+  id String @id @default(uuid())
+
+  name       String // custom title name, TBD per Section 5
+  scope      LeaderboardScope
+  scopeRefId String
+
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id])
+
+  currentHolderId String?
+  currentHolder   GamerProfile? @relation(fields: [currentHolderId], references: [id])
+
+  cafeHolderId String? // if the title is cafe-level rather than gamer-level
+  cafeHolder   Cafe?   @relation(fields: [cafeHolderId], references: [id])
+
+  heldSince DateTime?
+
+  history TitleHistory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TitleHistory {
+  id String @id @default(uuid())
+
+  titleId String
+  title   Title  @relation(fields: [titleId], references: [id])
+
+  holderGamerId String?
+  holderCafeId  String?
+
+  heldFrom  DateTime
+  heldUntil DateTime?
+}
+
+model Payment {
+  id String @id @default(uuid())
+
+  participantId String                @unique
+  participant   TournamentParticipant @relation(fields: [participantId], references: [id])
+
+  gamerId String
+  gamer   GamerProfile @relation(fields: [gamerId], references: [id])
+
+  amount     Decimal
+  status     PaymentStatus @default(PENDING)
+  gatewayRef String? // external payment gateway transaction ID
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
