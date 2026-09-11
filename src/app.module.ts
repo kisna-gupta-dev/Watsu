@@ -5,12 +5,14 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { JwtService } from '@nestjs/jwt';
+import { GamersModule } from './gamers/gamers.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
-    AuthModule],
+    AuthModule,
+    GamersModule],
   controllers: [AppController],
   providers: [AppService,JwtService],
 })

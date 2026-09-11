@@ -85,7 +85,7 @@ model GamerProfile {
 
   displayName String
   avatarUrl   String?
-  city        String?
+  city        String
   homeCafeId  String?
   homeCafe    Cafe?   @relation("HomeCafeGamers", fields: [homeCafeId], references: [id])
 

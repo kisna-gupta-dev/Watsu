@@ -1,9 +1,10 @@
 import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { LoginDto } from './dto/login.dto';
-import { SignupDto } from './dto/signup.dto';
+import { SignupDtoGamer ,SignupDtoCafe} from './dto/signup.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { JwtService,} from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { Role } from 'generated/prisma/enums';
 @Injectable()
 export class AuthService {
 
@@ -12,23 +13,57 @@ export class AuthService {
     private jwtService: JwtService, 
   ) {}
 
-  async signup(signupDto: SignupDto) {
+  async signupGamer(SignupDtoGamer: SignupDtoGamer) {
+    const user = await this.signup(SignupDtoGamer);
+    await this.prisma.gamerProfile.create({
+      data:{
+        userId:user.id,
+        displayName:SignupDtoGamer.displayName,
+        avatarUrl: SignupDtoGamer.avatarUrl ?  SignupDtoGamer.avatarUrl : "",
+        city:SignupDtoGamer.city,
+        homeCafeId: "To be Implemented",
+      },
+    });
+    return this.generateTokens(user.id, user.role);
+  }
+
+
+  async signup(SignupDto){
     const existingUser = await this.prisma.user.findUnique({
       where: {
-        email: signupDto.email,
+        email: SignupDto.email,
       },
     });
     if (existingUser) {
       throw new ConflictException('User already exists');
     }
-    const hashedPassword = await bcrypt.hash(signupDto.password, 10);
-    const user = await this.prisma.user.create({
+    const hashedPassword = await bcrypt.hash(SignupDto.password, 10);
+    return await this.prisma.user.create({
       data: {
-        email: signupDto.email,
+        email: SignupDto.email,
         password: hashedPassword,
-        role: signupDto.role,
+        role: Role.CAFE_OWNER,
       },
-    });
+  });
+}
+
+  async signupCafe(SignupDtoCafe: SignupDtoCafe) {
+    const user = await this.signup(SignupDtoCafe)
+    const owner = await this.prisma.cafeOwnerProfile.create({
+      data:{
+       userId:user.id,
+       businessName:SignupDtoCafe.businessName,
+       phone:SignupDtoCafe.phoneNumber 
+      }
+    })
+    await this.prisma.cafe.create({
+      data:{
+        ownerId: owner.id,
+        name: SignupDtoCafe.businessName,
+        address:SignupDtoCafe.address,
+        city:SignupDtoCafe.city
+      }
+    })
     return this.generateTokens(user.id, user.role);
   }
 
@@ -67,6 +102,7 @@ export class AuthService {
       data: { refreshToken: null },
     });
     console.log("Logged Out");
+    return true;
   }
 
   private async generateTokens(userId: string, role: string) {
