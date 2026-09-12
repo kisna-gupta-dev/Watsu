@@ -1,26 +1,97 @@
 import { Injectable } from '@nestjs/common';
 import { CreateGamerDto } from './dto/create-gamer.dto';
-import { UpdateGamerDto } from './dto/update-gamer.dto';
-
+import { UpdateDto } from './dto/update-gamer.dto';
+import { PrismaService } from 'src/prisma/prisma.service';
 @Injectable()
 export class GamersService {
-  create(createGamerDto: CreateGamerDto) {
-    return 'This action adds a new gamer';
+  constructor(
+    private readonly prisma: PrismaService
+  ){}
+
+  async findGamerById(userId) {
+    return await this.prisma.gamerProfile.findUnique({
+      where:{
+        userId:userId
+      },
+      include:{
+        homeCafe:true,
+        inGameIds:true,
+        participations:true,
+        titlesHeld:true,
+        payments:true,
+        user:true
+      }
+    })
   }
 
-  findAll() {
-    return `This action returns all gamers`;
+  async updateInfo(userId,UpdateDto) {
+    if(UpdateDto.email){
+      await this.prisma.user.update({
+        where:{
+          id:userId
+        },
+        data:{
+          email:UpdateDto.email
+        }
+      })
+    }
+    const gamerProfile = await this.findGamerById(userId);
+
+    const updatedData = await this.prisma.gamerProfile.update({
+      where:{
+        userId:userId,
+      },
+      data:{
+        displayName: UpdateDto.displayname ? UpdateDto.displayname : gamerProfile.displayName,
+        avatarUrl: UpdateDto.avatarUrl ? UpdateDto.avatarUrl : gamerProfile.avatarUrl,
+        city:UpdateDto.city ? UpdateDto.city : gamerProfile.city,
+
+      }
+    })
+
+    return {
+      updatedData,
+      email: UpdateDto.email
+    }
+
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} gamer`;
+  async getGamerPublicData(displayName){
+    console.log(displayName)
+    return await this.prisma.gamerProfile.findUnique({
+      where:{
+        displayName: displayName
+      },
+      include:{
+        payments:false,
+        homeCafe:true,
+        inGameIds:true,
+        titlesHeld:true,
+      }
+    })
   }
 
-  update(id: number, updateGamerDto: UpdateGamerDto) {
-    return `This action updates a #${id} gamer`;
+  async matchHistory(userId){
+    const gamer = await this.prisma.gamerProfile.findUnique({
+      where:{
+        userId:userId
+      }
+    }) 
+    return await this.prisma.tournamentParticipant.findMany({
+      where:{
+        gamerId:gamer.id
+      }
+    })
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} gamer`;
+  async titlesHeld(userId){
+    return await this.prisma.gamerProfile.findUnique({
+      where:{
+        userId:userId
+      },
+      include:{
+        titlesHeld:true,
+      }
+    })
   }
 }

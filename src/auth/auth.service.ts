@@ -14,21 +14,20 @@ export class AuthService {
   ) {}
 
   async signupGamer(SignupDtoGamer: SignupDtoGamer) {
-    const user = await this.signup(SignupDtoGamer);
+    const user = await this.signup(SignupDtoGamer,Role.GAMER);
     await this.prisma.gamerProfile.create({
       data:{
         userId:user.id,
         displayName:SignupDtoGamer.displayName,
         avatarUrl: SignupDtoGamer.avatarUrl ?  SignupDtoGamer.avatarUrl : "",
         city:SignupDtoGamer.city,
-        homeCafeId: "To be Implemented",
       },
     });
     return this.generateTokens(user.id, user.role);
   }
 
 
-  async signup(SignupDto){
+  async signup(SignupDto, role){
     const existingUser = await this.prisma.user.findUnique({
       where: {
         email: SignupDto.email,
@@ -42,13 +41,13 @@ export class AuthService {
       data: {
         email: SignupDto.email,
         password: hashedPassword,
-        role: Role.CAFE_OWNER,
+        role: role,
       },
   });
 }
 
   async signupCafe(SignupDtoCafe: SignupDtoCafe) {
-    const user = await this.signup(SignupDtoCafe)
+    const user = await this.signup(SignupDtoCafe,Role.CAFE_OWNER)
     const owner = await this.prisma.cafeOwnerProfile.create({
       data:{
        userId:user.id,

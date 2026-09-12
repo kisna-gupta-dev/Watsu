@@ -29,7 +29,6 @@ export class SignupDtoGamer {
 
     @ApiProperty({example:'Indore'})
     @IsString()
-    @IsEmpty()
     city:string;
     
 }

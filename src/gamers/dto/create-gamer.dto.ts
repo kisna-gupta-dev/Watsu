@@ -1,1 +1,3 @@
-export class CreateGamerDto {}
+export class CreateGamerDto {
+    
+}

@@ -83,7 +83,7 @@ model GamerProfile {
   userId String @unique
   user   User   @relation(fields: [userId], references: [id])
 
-  displayName String
+  displayName String @unique
   avatarUrl   String?
   city        String
   homeCafeId  String?

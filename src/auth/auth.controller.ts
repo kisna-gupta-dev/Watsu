@@ -2,7 +2,7 @@
 import { Body, Controller, Post, UseGuards, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { SignupDto } from './dto/signup.dto';
+import { SignupDtoCafe, SignupDtoGamer } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
@@ -11,10 +11,16 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  @Post('signup')
-  @ApiOperation({ summary: 'Register a new user (gamer, cafe owner, or admin)' })
-  signup(@Body() dto: SignupDto) {
-    return this.authService.signup(dto);
+  @Post('gamer/signup')
+  @ApiOperation({ summary: 'Register a new Gamer' })
+  signupGamer(@Body() dto: SignupDtoGamer) {
+    return this.authService.signupGamer(dto);
+  }
+
+  @Post('cafe/signup')
+  @ApiOperation({ summary: 'Register a new cafe' })
+  signupCafe(@Body() dto: SignupDtoCafe) {
+    return this.authService.signupCafe(dto);
   }
 
   @Post('login')
