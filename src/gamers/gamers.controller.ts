@@ -1,6 +1,5 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req } from '@nestjs/common';
 import { GamersService } from './gamers.service';
-import { CreateGamerDto } from './dto/create-gamer.dto';
 import { UpdateDto } from './dto/update-gamer.dto';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -37,20 +36,13 @@ export class GamersController {
     return this.gamersService.matchHistory(req.user.userId);
   }
 
-  //Not so much required
+  //Not so much required may delete later
   @Get('me/titles')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)
   titlesHeld(@Req() req){
     return this.gamersService.titlesHeld(req.user.userId);
   }
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateGamerDto: UpdateGamerDto) {
-  //   return this.gamersService.update(+id, updateGamerDto);
-  // }
+  
 
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.gamersService.remove(+id);
-  // }
 }
